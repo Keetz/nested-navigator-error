@@ -1,57 +1,86 @@
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+
 import 'package:flutter/material.dart';
-import 'package:navigator_test/page_model.dart';
-import 'package:navigator_test/route_information_parser.dart';
-import 'package:navigator_test/router_delegate.dart';
-import 'package:provider/provider.dart';
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: <ChangeNotifierProvider<dynamic>>[
-        ChangeNotifierProvider<PageModel>(
-            create: (BuildContext context) => PageModel()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(MyApp());
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  MyApp({super.key});
 
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  late MyRouterDelegate _routerDelegate;
-  late MyRouteInformationParser _routeInformationParser;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _routerDelegate = MyRouterDelegate(context);
-    _routeInformationParser = MyRouteInformationParser();
-  }
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> innerNavigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        final FocusScopeNode currentScope = FocusScope.of(context);
-        if (!currentScope.hasPrimaryFocus && currentScope.hasFocus) {
-          FocusManager.instance.primaryFocus!.unfocus();
-        }
+    return MaterialApp(
+      builder: (BuildContext context, Widget? child) {
+        return Navigator(
+          key: navigatorKey,
+          pages: <Page<dynamic>>[
+            MaterialPage<Page<dynamic>>(
+              child: MainScaffold(navigatorKey: innerNavigatorKey),
+            )
+          ],
+          onPopPage: (Route<dynamic> route, dynamic result) {
+            return route.didPop(result);
+          },
+        );
       },
-      child: MaterialApp.router(
-        title: 'Navigator Test',
-        theme: ThemeData(
-          primarySwatch: Colors.purple,
-        ),
-        routerDelegate: _routerDelegate,
-        routeInformationParser: _routeInformationParser,
+    );
+  }
+}
+
+class MainScaffold extends StatelessWidget {
+  const MainScaffold({super.key, required this.navigatorKey});
+
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      drawer: const Drawer(
+        child: Center(child: TextField()), // Loses focus immediately!
       ),
+      body: Column(
+        children: [
+          Expanded(child: InnerNavigator(navigatorKey: navigatorKey)),
+          const Divider(),
+          TextField(), // Loses focus immediately!
+          const SizedBox(height: 20)
+        ],
+      ),
+      resizeToAvoidBottomInset: false,
+    );
+  }
+}
+
+class InnerNavigator extends StatelessWidget {
+  const InnerNavigator({super.key, required this.navigatorKey});
+
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Navigator(
+      key: navigatorKey,
+      pages: [
+        // This works!
+        // const MaterialPage(
+        //   child: Center(child: TextField()),
+        // ),
+
+        // This doesn't work!
+        MaterialPage(
+          child: Center(child: Text('Inner Navigator')),
+        ),
+      ],
+      onPopPage: (Route<dynamic> route, dynamic result) {
+        return route.didPop(result);
+      },
     );
   }
 }
